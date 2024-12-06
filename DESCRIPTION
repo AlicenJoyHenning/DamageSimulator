@@ -1,0 +1,15 @@
+Package: damagesimulator
+Title: Simulate Damage in Single-Cell RNA Sequencing Data
+Version: 0.0.0.9000
+Authors@R: 
+    person("Alicen", "Henning", , "alicen.jhb@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0004-0535-1624"))
+Description: Provides functions to simulate damage in single-cell RNA sequencing data by removing a given proportion of cells, artificially damaging them, and reintroducing them to the dataset.
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends: 
+    R (>= 2.10)
+LazyData: true
+Config/Needs/website: true

@@ -6,7 +6,7 @@
 
 <br>
 
-Given the lack of ground-truth damaged data, this package was created to simulate damaged cells in single-cell RNA sequencing. It operates by removing a user-defined proportion of cells, applying a damage perturbation function, and reintroducing them into the original dataset. Here, perturbation is defined by community-accepted characteristics of damage:
+Given the lack of ground-truth damaged data, this package was created to simulate damaged cells in single-cell RNA sequencing. It operates by removing a user-defined proportion of cells from an input dataset and applying a damage perturbation function before reintroducing the cells to the original data. Here, perturbation is defined by community-accepted characteristics of damage:
 * High mitochondrial content
 * Relatively lower cytoplasmic content
 

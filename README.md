@@ -12,7 +12,7 @@ Given the lack of ground-truth damaged data, this package was created to simulat
 
 <br>
 
-However, we acknowledge that this understanding of damage is limited, as will the simulated cells it generates. We hope to gain more experimentally verified studies characterizing damage in scRNA-seq, but until then, as the first damage simulator of its kind, we propose ```damagesimulator``` as a starting point for further damage investigations.
+However, we acknowledge that this understanding of damage is limited, as will the simulated cells it generates. We hope to gain more experimentally verified studies characterizing damage in scRNA-seq, but until then, as the first damage simulator of its kind, we propose ```damagesimulator``` as a valuable starting point for further damage investigations.
 
 
 <br>

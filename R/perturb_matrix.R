@@ -17,8 +17,12 @@
 perturb_matrix <- function(seurat,
                              mito_genes,
                              percent_damage,
-                             project_name,
-                             output_dir) {
+                             project_name, 
+                             save_seurat = TRUE, 
+                             save_matrix = FALSE, 
+                             save_plot = FALSE, 
+                             output_dir
+                          ) {
 
   # Extract percentage of cells at random, these will be altered and then reintroduced
   damaged_cell_number <- round(((percent_damage / 100) * (dim(seurat)[2])), 0)
@@ -34,9 +38,9 @@ perturb_matrix <- function(seurat,
 
   # Perturb the selected cells
   perturbed_matrix <- apply(to_be_perturbed_matrix, 2, perturb_single_cell, mito_genes = mito_genes)
-  rownames(perturbed_matrix) <- rownames(to_be_perturbed_matrix)
-
+  
   # Reorder the rows of perturbed_matrix to match the order of unperturbed_matrix
+  rownames(perturbed_matrix) <- rownames(to_be_perturbed_matrix)
   perturbed_matrix <- perturbed_matrix[match(rownames(unperturbed_matrix), rownames(perturbed_matrix)), ]
 
   # Combine perturbed and unperturbed cells
@@ -81,9 +85,16 @@ perturb_matrix <- function(seurat,
   combined_seurat$celltype <- ifelse(combined_seurat$orig.ident == "damaged", "damaged", combined_seurat$celltype)
 
   # Save outputs
+  if (save_seurat){
   saveRDS(combined_seurat, file.path(output_dir, paste0(project_name, ".rds")))
+  }
+    
+  if (save_matrix){
   write.csv(combined_matrix, file.path(output_dir, paste0(project_name, "_matrix.csv")))
-
+  }
+  
+  if (save_plot){
+  
   # Visualize the output
   test <- NormalizeData(combined_seurat) %>%
     FindVariableFeatures() %>%
@@ -93,16 +104,36 @@ perturb_matrix <- function(seurat,
     FindClusters() %>%
     RunUMAP(dims = 1:30)
 
-  # Note that these markers are applicable for immune/PBMCs
-  colours <- c("T" = "#A6BEAE",
-               "Monocyte" = "#88A1CD",
-               "DC" = "#A799C9",
-               "B" = "#BDC5EE",
-               "NK" = "#9DBD73",
+  # If cell type information is present, use this for plotting
+  if (!is.na(seurat$celltype)){
+
+  # Colour palatte defined
+  colours <- c("#A6BEAE","#88A1CD", "#A799C9", "#BDC5EE", "#9DBD73", "#A6BEAE","#88A1CD", "#A799C9", "#BDC5EE", "#9DBD73", 
+             "#A6BEAE","#88A1CD", "#A799C9", "#BDC5EE", "#9DBD73", "#A6BEAE","#88A1CD", "#A799C9", "#BDC5EE", "#9DBD73", 
+             "#A6BEAE","#88A1CD", "#A799C9", "#BDC5EE", "#9DBD73", "#A6BEAE","#88A1CD", "#A799C9", "#BDC5EE", "#9DBD73")
+              
+  # Extract the cell type entries 
+  celltypes <- unique(seurat$celltype) 
+
+  # Assign each entry of celltypes to a colour
+  celltype_colours <- setNames(colours[seq_along(celltypes)], celltypes)
+
+  # Add damaged cell colour
+  celltype_colours["damaged"] <- "red"
+
+  # Generate the plot coloured by cell type  
+  plot <- DimPlot(test, group.by = "celltype")  +
+    NoAxes() + ggtitle(project_name) + scale_color_manual(values = colours) +
+    theme(panel.border = element_rect(colour = "black"))
+
+  }
+
+  # If cell type information is not present, use the orig.ident labels to colour the plot 
+  colours <- c("cell" = "grey",
                "damaged" = "red"
   )
 
-  plot <- DimPlot(test, group.by = "celltype")  +
+  plot <- DimPlot(test, group.by = "orig.ident")  +
     NoAxes() + ggtitle(project_name) + scale_color_manual(values = colours) +
     theme(panel.border = element_rect(colour = "black"))
 
@@ -112,6 +143,8 @@ perturb_matrix <- function(seurat,
          height = 4,
          units = "in",
          dpi = 300)
+
+  }
 
   return(combined_seurat)
 }

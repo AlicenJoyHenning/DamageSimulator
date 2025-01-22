@@ -7,6 +7,9 @@
 #' @param percent_damage A numeric value indicating the percentage of cells to be perturbed.
 #' @param project_name A character string for the project name.
 #' @param output_dir A character string for the output directory (default is "/home/alicen/Projects/ReviewArticle/damage_perturbation/scDesign2").
+#' @param save_seurat Boolean to specify whether the perturbed Seurat object should be saved, TRUE by default.
+#' @param save_matrix Boolean to specify whether the perturbed matrix should be saved, FAlSE by default.
+#' @param save_plot Boolean to specify whether the perturbed Seurat object should be saved, FALSE by default.
 #' @return A Seurat object with perturbed and unperturbed cells combined.
 #' @examples
 #' # Example usage:

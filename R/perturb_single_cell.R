@@ -12,7 +12,12 @@
 #' # mito_genes <- c("MT-CO1", "MT-CO2", "MT-CO3")
 #' # perturbed_matrix <- perturb_single_cell(count_matrix, mito_genes)
 #' @export
-perturb_single_cell <- function(count_matrix, mito_genes = NULL, zero_out_constant = 0.0) {
+perturb_single_cell <- function(
+  count_matrix, 
+  mito_genes = NULL, 
+  zero_out_constant = 0.0, 
+  verbose = TRUE
+) {
 
   # Load default mito_genes if not provided
   if (is.null(mito_genes)) {
@@ -67,10 +72,14 @@ perturb_single_cell <- function(count_matrix, mito_genes = NULL, zero_out_consta
     # Apply the calculated reduction factor directly
     count_matrix[non_mito_idx, i] <- count_matrix[non_mito_idx, i] * reduction_factor
 
+    if (verbose){
     # Optional: display iteration details
     cat("Processed cell", i, "- Target mito %", round(target_mito_pct[i], 2),
         "- Remaining non-mito genes:", sum(count_matrix[non_mito_idx, i] > 0), "\n")
   }
 
-  return(count_matrix)
+}
+  
+return(count_matrix)
+  
 }

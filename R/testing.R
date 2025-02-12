@@ -7,7 +7,7 @@ library(patchwork)    # For combining multiple ggplot2 plots
 library(scRNAseq)
 
 # Damage simulation function ----
-simulatedamaged_cell_selections <- function(count_matrix, 
+simulate_damage <- function(count_matrix, 
                                  damage_proportion = 0.2, 
                                  beta_proportion = 0.5, 
                                  lambda = 5,
@@ -39,7 +39,7 @@ simulatedamaged_cell_selections <- function(count_matrix,
   #Compute damage level for each damaged cell
   for (i in seq_along(damaged_cell_selections)) {
     cell <- damaged_cell_selections[i]
-    target <- damage_levels[i]
+    #target <- damage_levels[i]
     
     M_i <- sum(count_matrix[mito_idx, cell])  # mitochondrial counts
     R_i <- sum(count_matrix[ribo_idx, cell])  # ribosomal counts
@@ -98,7 +98,7 @@ counts <- as(counts, "sparseMatrix")
 count_matrix <- counts
 
 # Run the function 
-results <- simulateDamagedCells(countMatrix = counts, damageProp = 0.9,  beta_proportion = 1)
+results <- simulate_damage(count_matrix = counts, damage_prop = 0.9,  beta_proportion = 1)
 
 # Plot outcome
 mito_ribo_old <- ggplot(results$qcSummary, aes(x = Original_RiboProp, y = Original_MitoProp, colour = Damaged_Status)) + 

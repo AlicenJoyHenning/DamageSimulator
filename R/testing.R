@@ -4,7 +4,7 @@ library(Matrix)       # For sparse matrices
 library(ggplot2)      # For plotting
 library(scales)       # For number formatting in ggplot2
 library(patchwork)    # For combining multiple ggplot2 plots
-
+library(scRNAseq)
 
 # Damage simulation function ----
 simulatedamaged_cell_selections <- function(count_matrix, 

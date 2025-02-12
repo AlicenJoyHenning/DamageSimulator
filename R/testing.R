@@ -101,8 +101,9 @@ count_matrix <- counts
 results <- simulate_damage(count_matrix = counts, damage_prop = 0.9,  beta_proportion = 1)
 
 # Plot outcome
+# Plot outcome
 mito_ribo_old <- ggplot(results$qcSummary, aes(x = Original_RiboProp, y = Original_MitoProp, colour = Damaged_Status)) + 
-  scale_color_manual(values = c("high_damage" = "#FE3A55", "low_damage" = "#3A87FE", "none" = "#C1C1C2")) + 
+  scale_color_manual(values = c("damaged" = "#FE3A55", "cell" = "#C1C1C2")) + 
   scale_y_continuous(labels = number_format(accuracy = 0.1)) + 
   geom_point() + 
   theme_classic() + 
@@ -113,7 +114,7 @@ mito_ribo_old <- ggplot(results$qcSummary, aes(x = Original_RiboProp, y = Origin
         legend.position = "none")
 
 mito_ribo_new <- ggplot(results$qcSummary, aes(x = New_RiboProp, y = New_MitoProp, colour = Damaged_Status)) + 
-  scale_color_manual(values = c("high_damage" = "#FE3A55", "low_damage" = "#3A87FE", "none" = "#C1C1C2")) + 
+  scale_color_manual(values = c("damaged" = "#FE3A55", "cell" = "#C1C1C2")) + 
   scale_y_continuous(labels = number_format(accuracy = 0.1)) + 
   geom_point() + 
   scale_x_continuous(limits = c(0, 1), labels = number_format(accuracy = 0.1)) +
@@ -124,7 +125,7 @@ mito_ribo_new <- ggplot(results$qcSummary, aes(x = New_RiboProp, y = New_MitoPro
         legend.position = "none")
 
 mito_features_old <- ggplot(results$qcSummary, aes(x = Original_Features, y = Original_MitoProp, colour = Damaged_Status)) + 
-  scale_color_manual(values = c("high_damage" = "#FE3A55", "low_damage" = "#3A87FE", "none" = "#C1C1C2")) + 
+  scale_color_manual(values = c("damaged" = "#FE3A55", "cell" = "#C1C1C2")) + 
   scale_y_continuous(labels = number_format(accuracy = 0.1)) + 
   geom_point() + 
   scale_y_continuous(limits = c(0, 1), labels = number_format(accuracy = 0.1)) +
@@ -134,7 +135,7 @@ mito_features_old <- ggplot(results$qcSummary, aes(x = Original_Features, y = Or
         legend.position = "none")
 
 mito_features_new <- ggplot(results$qcSummary, aes(x = New_Features, y = New_MitoProp, colour = Damaged_Status)) + 
-  scale_color_manual(values = c("high_damage" = "#FE3A55", "low_damage" = "#3A87FE", "none" = "#C1C1C2")) + 
+  scale_color_manual(values = c("damaged" = "#FE3A55", "cell" = "#C1C1C2")) + 
   scale_y_continuous(labels = number_format(accuracy = 0.1)) + 
   geom_point() + 
   scale_y_continuous(limits = c(0, 1), labels = number_format(accuracy = 0.1)) +

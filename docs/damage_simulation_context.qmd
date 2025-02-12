@@ -107,6 +107,7 @@ c\. Sometimes despite applying the reduction factor, there are virtually no visi
 
 ![](challenge_3.png){fig-align="center"}
 
+
 ### Test data
 
 The testing data can be accessed in `R` or [online](https://drive.google.com/drive/folders/15h4JBdGlEAcQnpytPvovXIdO78IjlhFQ) and tested with the current [code](https://github.com/AlicenJoyHenning/damagesimulator/blob/main/R/testing.R). Any suggestions or advice would be hugely appreciated, thank you!

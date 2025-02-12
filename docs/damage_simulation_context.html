@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.40">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Damage Simulation Model</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="damage_simulation_context_files/libs/clipboard/clipboard.min.js"></script>
+<script src="damage_simulation_context_files/libs/quarto-html/quarto.js"></script>
+<script src="damage_simulation_context_files/libs/quarto-html/popper.min.js"></script>
+<script src="damage_simulation_context_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="damage_simulation_context_files/libs/quarto-html/anchor.min.js"></script>
+<link href="damage_simulation_context_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="damage_simulation_context_files/libs/quarto-html/quarto-syntax-highlighting-549806ee2085284f45b00abea8c6df48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="damage_simulation_context_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="damage_simulation_context_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="damage_simulation_context_files/libs/bootstrap/bootstrap-973236bd072d72a04ee9cd82dcc9cb29.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#context" id="toc-context" class="nav-link active" data-scroll-target="#context">Context</a>
+  <ul class="collapse">
+  <li><a href="#single-cell-rna-sequencing-scrna-seq-data" id="toc-single-cell-rna-sequencing-scrna-seq-data" class="nav-link" data-scroll-target="#single-cell-rna-sequencing-scrna-seq-data">Single cell RNA sequencing (scRNA-seq) data</a></li>
+  <li><a href="#characteristics-of-damage-in-scrna-seq" id="toc-characteristics-of-damage-in-scrna-seq" class="nav-link" data-scroll-target="#characteristics-of-damage-in-scrna-seq">Characteristics of damage in scRNA-seq</a></li>
+  </ul></li>
+  <li><a href="#modelling-goal-and-outline" id="toc-modelling-goal-and-outline" class="nav-link" data-scroll-target="#modelling-goal-and-outline">Modelling goal and outline</a>
+  <ul class="collapse">
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#model-assumptions" id="toc-model-assumptions" class="nav-link" data-scroll-target="#model-assumptions">Model assumptions</a></li>
+  <li><a href="#current-challenges-in-implementation" id="toc-current-challenges-in-implementation" class="nav-link" data-scroll-target="#current-challenges-in-implementation">Current challenges in implementation</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Damage Simulation Model</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="context" class="level2">
+<h2 class="anchored" data-anchor-id="context">Context</h2>
+<section id="single-cell-rna-sequencing-scrna-seq-data" class="level3">
+<h3 class="anchored" data-anchor-id="single-cell-rna-sequencing-scrna-seq-data">Single cell RNA sequencing (scRNA-seq) data</h3>
+<p>This work is focusing on developing a model to simulate damaged cells in single cell RNA sequencing (scRNA-seq) data. The data comes in the form of a matrix where each column is a cell and each row is a gene, meaning each entry is the expression of that gene within the cell. Biologically, the majority of genes in the human genome are not expressed in every cell (more than 20 000 protein coding genes in total but an average of less than 5000 expressed in each cell). As a result, single cell data is very sparse with most entries being zero. There are many other complexities of scRNA-seq data, in addition to the nuances inherent in the biology of what is being sequenced. In our case, rather than modelling new single cell data, we are interested in using existing scRNA-seq data and altering it to resemble damaged scRNA-seq data.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="count_matrix.png" class="img-fluid figure-img" width="379"></p>
+<figcaption><sub>Figure&nbsp;1&nbsp;ScRNA-seq&nbsp;count&nbsp;matrix</sub></figcaption>
+</figure>
+</div>
+</section>
+<section id="characteristics-of-damage-in-scrna-seq" class="level3">
+<h3 class="anchored" data-anchor-id="characteristics-of-damage-in-scrna-seq">Characteristics of damage in scRNA-seq</h3>
+<p>Damaged cells can exist in single cell data for reasons such as experiencing stressful conditions during cell capture before sequencing or through the trauma of the sequencing protocol itself. Regardless of how damaged cells are created, we assume they express the same physical trait: a ruptured cell membrane. This results in the cellular contents we intend to sequence, RNA, being lost as they leak out of the membrane and escape&nbsp;before ever getting the chance to be sequenced. However, certain RNA species are contained within additional subcellular structures known as mitochondria. Each mitochondrion has its own membrane and internal organisation providing a protected environment meaning RNA housed here is very unlikely to be lost during cell damage. As a result, a common marker of damage is the elevated contribution of mitochondrial genes to the total gene expression of a cell. Usually, the contribution of mitochondrial genes is minimal, which makes sense seeing that there are only 37 mitochondrial genes in total in the human genome. The process of damage is shown at a small scale in the example below looking at the expression level of 1 mitochondrial (M) and 1 non-mitochondrial (G) gene in a cell,</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="damaged_cell.png" class="img-fluid figure-img" width="379"></p>
+<figcaption><sub>Figure&nbsp;2.&nbsp;Depiction&nbsp;of&nbsp;damage&nbsp;in&nbsp;scRNA-seq</sub></figcaption>
+</figure>
+</div>
+<p>When looking at existing scRNA-seq data, we notice that the relationship between the mitochondrial proportion and the number of expressed genes (genes where expression is greater than 0) follows that typical of exponential decay. This makes sense as the more genes are expressed by a cell, the lower the contribution of mitochondrial genes to the cell’s total gene count tends to be. This is magnified in the case of damage where extremely high mitochondrial proportions occur only in cells where the total number of expressed genes is very low. Below are 6 plots of publicly available single cell datasets that, like most datasets, follow the exponential decay distribution. Being unfiltered, we even see populations of cells we assume to be damaged (circled in red)</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="mito_feature.png" class="img-fluid figure-img"></p>
+<figcaption><sup>Figure&nbsp;3.&nbsp;ScRNAseq&nbsp;datasets&nbsp;viewed&nbsp;according&nbsp;to&nbsp;mitochondrial&nbsp;percentage&nbsp;and&nbsp;feature&nbsp;number.&nbsp;Note&nbsp;that&nbsp;mitochondrial&nbsp;proportion&nbsp;is&nbsp;depicted&nbsp;as&nbsp;a&nbsp;percentage&nbsp;(mt.percent).</sup></figcaption>
+</figure>
+</div>
+<p>Another valuable metric is the proportion of the total gene expression coming from another set of genes known as ribosomal genes. Ribosomal RNA is located in the cytoplasm, the part of the cell where RNA is vulnerable to being lost in the event of damage, and unlike most RNA is ubiquitously expressed in all cells due to its fundamental role in protein synthesis. In the event of damage, we therefore expect the ribosomal proportion to decrease. Looking at the same 6 datasets explored above, we see that the proportion of mitochondrial and ribosomal expression in cells follow a very similar if not identical&nbsp;distribution to that seen above.&nbsp;</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="mito_ribo.png" class="img-fluid figure-img"></p>
+<figcaption><sup>Figure&nbsp;3.&nbsp;ScRNAseq&nbsp;datasets&nbsp;viewed&nbsp;according&nbsp;to&nbsp;mitochondrial&nbsp;and&nbsp;ribosomal&nbsp;percentage.&nbsp;Note&nbsp;that&nbsp;mitochondrial&nbsp;and&nbsp;ribosomal&nbsp;proportion&nbsp;are&nbsp;depicted&nbsp;as&nbsp;percentages&nbsp;(mt.percent&nbsp;and&nbsp;rb.percent).</sup></figcaption>
+</figure>
+</div>
+<p>However, looking at the data of experimentally verified damaged cells, we see that not all damaged cells exist in this extreme phenotype/ in this extreme position on the plots. In fact, there is often a larger population of damaged cells that resemble normal cells. This is shown below where all coloured cells were experimentally verified to be damaged yet only the red ones show typical characteristics of damage.&nbsp;We suggest this describes a system where cells can experience damage-inducing stress without fully succumbing to damage but once they do, the damage is induced rapidly.&nbsp;</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="dataset_1.png" class="img-fluid figure-img"></p>
+<figcaption><sup>Figure&nbsp;4.&nbsp;Quality&nbsp;control&nbsp;metrics&nbsp;of&nbsp;ground&nbsp;truth&nbsp;dataset&nbsp;1</sup></figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="dataset_2.png" class="img-fluid figure-img"></p>
+<figcaption><sup>Figure&nbsp;5.&nbsp;Quality&nbsp;control&nbsp;metrics&nbsp;of&nbsp;ground&nbsp;truth&nbsp;dataset&nbsp;2</sup></figcaption>
+</figure>
+</div>
+</section>
+</section>
+<section id="modelling-goal-and-outline" class="level2">
+<h2 class="anchored" data-anchor-id="modelling-goal-and-outline">Modelling goal and outline</h2>
+<p>Using an input count matrix, the goal is to extract cells, alter their gene expression to resemble damaged cells, and reintroduce them to the count matrix.&nbsp;</p>
+<p>My idea is to generate a reduction factor for each cell to multiply by all the non-mitochondrial counts of the cell. In this way, the resulting mitochondrial proportion must&nbsp;increase as the total counts of the cell coming from non-mitochondrial genes decreases. Additionally, after being multiplied by the reduction factor, the non-mitochondrial counts must be rounded to the nearest whole number which results in many of the genes with very low counts becoming zero, a natural outcome which helps reduce the total number of features.&nbsp;</p>
+<p>The challenge is to select reduction factors for each cell in a way that preserves the exponential decay relationships of the dataset. The number of cells residing in different areas of the exponential decay distribution is expected to change (more in the top left) but the shape must be retained.&nbsp;</p>
+<section id="parameters" class="level3">
+<h3 class="anchored" data-anchor-id="parameters">Parameters</h3>
+<p><span class="math inline">\(A\)</span> - the proportion of final RNA that comes from mitochondrial genes in a cell</p>
+<p><span class="math inline">\(B\)</span> - the proportion of final RNA that comes from ribosomal genes in a cell</p>
+<p><span class="math inline">\(C\)</span> - the total number of non-zero genes expressed in a cell</p>
+<p>Where the relationship between A, B and C are as follows, <span class="math display">\[
+B = e^{-\lambda A}
+\]</span> <span class="math display">\[
+C = e^{-\lambda A}
+\]</span></p>
+<p>Then, looking at each term we define <span class="math inline">\(c_m\)</span> - the inital mitochondrial counts in a cell (fixed) <span class="math inline">\(c_r\)</span> - the initial ribosomal counts in a cell <span class="math inline">\(c_o\)</span> - the initial non-mitochondrial and non-ribosomal (referred to as ‘other’) counts in a cell <span class="math inline">\(R\)</span> - reduction factor for a cell</p>
+<p>with the following relationships,</p>
+<p><span class="math display">\[
+A = \frac{c_m}{c_m + R \cdot (c_r + c_o)}
+\]</span></p>
+<p><span class="math display">\[
+B = \frac{R \cdot c_r}{c_m + R \cdot (c_r + c_o)}
+\]</span> And</p>
+<p><span class="math inline">\(f_m\)</span> - the final number of non-zero mitochondrial genes (fixed)</p>
+<p><span class="math inline">\(f_r\)</span> - the final number of non-zero ribosomal genes</p>
+<p><span class="math inline">\(f_o\)</span> - the final number of non-zero non-mitochondrial and non-ribosomal genes</p>
+<p><span class="math display">\[
+C = f_m + f_r + f_o
+\]</span></p>
+<p>where the number of non-zero features for each group is found after reduction has been applied and the result is rounded to the nearest whole number.</p>
+</section>
+<section id="model-assumptions" class="level3">
+<h3 class="anchored" data-anchor-id="model-assumptions">Model assumptions</h3>
+<ol type="1">
+<li><p>Each cell in a sample has an equal probability of becoming damaged. (The idea is that a user will input a desired proportion of damaged cells, say 10 % to inform how many cells in in the input matrix are damaged, but which cells are selected is random)</p></li>
+<li><p>The physical manifestation of damage varies among cells in a sample and follows a bimodal distribution modeled by two beta distributions: one near 0 (low manifestation) and one near 1 (high manifestation). This reflects our biological assumption that cells can sustain moderate damage without visible effects, but once a threshold is crossed, damage manifestations accumulate. (The idea is to use beta distributions so it is easy to control the positioning of each distribution and the relative proportions of each, for example, if you want to focus on only extensively damaged cells rather than relatively undamaged ones)</p></li>
+<li><p>In scRNA-seq data, the detectable manifestation of damage is the loss of cytoplasmic RNA while RNA that experiences further compartmentalization, such as mitochondrial and certain nuclear-residing RNA, is protected (related to intracellular leakage through the degraded plasma membrane of the damaged cell). (Which genes are protected have been selected by literature review)</p></li>
+<li><p>Cytoplasmic RNA loss is uniform across a cell and scales exponentially with the cell’s degree of physical manifestation of damage. In other words, we assume cells with greater damage manifestations experience exponentially greater RNA loss than cells with milder manifestations.</p></li>
+<li><p>While cytoplasmic RNA loss is uniform, transcripts with lower counts are more likely to become lost than those with higher counts. (This often occurs naturally due to rounding counts to whole numbers)</p></li>
+</ol>
+</section>
+<section id="current-challenges-in-implementation" class="level3">
+<h3 class="anchored" data-anchor-id="current-challenges-in-implementation">Current challenges in implementation</h3>
+<p>Different approaches for finding suitable reduction factors have been attempted there has been difficulty in the following areas:</p>
+<ol type="a">
+<li>For some reason related to the reduction, the resulting relationship between the ribosomal and mitochondrial proportion is often too linear.</li>
+</ol>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="challenge_1.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>b. When I can achieve a ribosomal proportion following the target exponential decay shape, the number of features are reduced too greatly resulting in almost no expression left for the cell. this results in the damaged cells being expressed in completely distinct clusters from other cells (which we do not really want, we expect them to be relatively similar to the original population from which they came).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="challenge_2.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>c. Sometimes despite applying the reduction factor, there are virtually no visible changes to the data.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="challenge_3.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

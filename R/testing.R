@@ -7,65 +7,92 @@ library(patchwork)    # For combining multiple ggplot2 plots
 library(scRNAseq)
 
 # Damage simulation function ----
+
 simulate_damage <- function(count_matrix, 
-                                 damage_proportion = 0.2, 
-                                 beta_proportion = 0.5, 
-                                 lambda = 5,
-                                 damage_distribution_shapes = c(a1 = 3, b1 = 20,  
-                                                                a2 = 25, b2 = 5))  # Low ~ 0.05–0.15 High ~ 0.8–0.9) {
-{  
-  # Identify mutally exclusive gene sets
-  mito_idx <- grep("^MT-", rownames(count_matrix), ignore.case = FALSE)
-  ribo_idx <- grep("^(RPS|RPL)", rownames(count_matrix), ignore.case = FALSE)
-  other_idx <- setdiff(seq_len(nrow(count_matrix)), union(mito_idx, ribo_idx))
+                            damage_proportion = 0.5, 
+                            beta_proportion = 0.5, 
+                            lambda = 10, 
+                            damage_distribution_shapes = c(a1 = 18, b1 = 35, a2 = 40, b2 = 10)  #  Low ~ 0.05–0.15 High ~ 0.8–0.9
+                            # (a + b) -> how steep, a/(a+b) where it sits      
+                            ) {
   
-  # Sample a number of cells to be damaged
+  # Randomly select proportion of cells to damage
   total_cells <- ncol(count_matrix)
   damaged_cell_number <- round(total_cells * damage_proportion)
   damaged_cell_selections <- sample(seq_len(total_cells), size = damaged_cell_number, replace = FALSE)
   
   # Storage of damage levels for all cell barcodes for plotting later
   damage_label <- data.frame(barcode = colnames(count_matrix)[damaged_cell_selections], status = rep("damaged", length(damaged_cell_selections)))
-  udamaged_cell_number_cells <- setdiff(seq_len(total_cells), damaged_cell_selections)
-  udamaged_cell_number <- data.frame(barcode = colnames(count_matrix)[udamaged_cell_number_cells], status = rep("control", length(udamaged_cell_number_cells)))
-  damage_label <- rbind(damage_label, udamaged_cell_number)
+  undamaged_cell_number_cells <- setdiff(seq_len(total_cells), damaged_cell_selections)
+  undamaged_cell_number <- data.frame(barcode = colnames(count_matrix)[undamaged_cell_number_cells], status = rep("control", length(undamaged_cell_number_cells)))
+  damage_label <- rbind(damage_label, undamaged_cell_number)
   
-  # Prepare a new count matrix to store the modified counts.
+  
+  # Draw target damage level for the damaged cells
+  high_count <- round(damaged_cell_number * beta_proportion)
+  low_count  <- damaged_cell_number - high_count
+  low_scaling  <- rbeta(low_count, shape1 = damage_distribution_shapes["a1"], shape2 = damage_distribution_shapes["b1"])
+  high_scaling <- rbeta(high_count, shape1 = damage_distribution_shapes["a2"], shape2 = damage_distribution_shapes["b2"])
+  damage_levels <- c(low_scaling, high_scaling)
+  
+  # View whether the shape is correct
+  #test <- data.frame(damage_levels)
+  #ggplot(test, aes(x = damage_levels)) + geom_histogram() + xlim(c(0, 1))
+  #min(damage_levels) # 0.12482
+  
+  # Storage of damage levels for all cell barcodes for plotting later
+  damage_label <- data.frame(barcode = colnames(count_matrix)[damaged_cell_selections], status = rep("damaged", length(damaged_cell_selections)))
+  undamaged_cell_number_cells <- setdiff(seq_len(total_cells), damaged_cell_selections)
+  undamaged_cell_number <- data.frame(barcode = colnames(count_matrix)[undamaged_cell_number_cells], status = rep("control", length(undamaged_cell_number_cells)))
+  damage_label <- rbind(damage_label, undamaged_cell_number)
+  
+
+  # Isolate gene set indices (consistent across cells, not subsetting the matirx)
+  mito_idx <- grep("^MT-", rownames(count_matrix), ignore.case = FALSE)
+  ribo_idx <- grep("^(RPS|RPL)", rownames(count_matrix), ignore.case = FALSE)
+  other_idx <- setdiff(seq_len(nrow(count_matrix)), union(mito_idx, ribo_idx))
+  
+  
+  # Initialize for storing modified counts
   new_matrix <- count_matrix
   
-  # Initialise storage for damage levels
-  reduction_levels <- numeric(damaged_cell_number)  # Create a vector for damage levels
+  # Define the number of Monte Carlo samples
+  n_samples <- 10000 # tested 1000 10000 100000 & found no helpful shift in shape from increasing
   
-  #Compute damage level for each damaged cell
+  # Loop over the damaged cells and apply the reduction to non-mito genes.
   for (i in seq_along(damaged_cell_selections)) {
+    #i = 100  # JUST FOR TESTING
+    
+    # Index in the count matrix for the cell
     cell <- damaged_cell_selections[i]
-    #target <- damage_levels[i]
     
-    M_i <- sum(count_matrix[mito_idx, cell])  # mitochondrial counts
-    R_i <- sum(count_matrix[ribo_idx, cell])  # ribosomal counts
-    O_i <- sum(count_matrix[other_idx, cell]) # other counts 
-    T_i <- R_i + O_i
+    # Target mito proportion for this cell
+    target <- damage_levels[i]
     
-    B <- R_i / (M_i + T_i)  # Ribosomal proportion
-    exp_decay <- exp(-lambda * B)
+    # Compute initial gene sums in the cell
+    M_i <- sum(count_matrix[mito_idx, cell])  # Mitochondrial
+    R_i <- sum(count_matrix[ribo_idx, cell])  # Ribosomal
+    O_i <- sum(count_matrix[other_idx, cell]) # Other (non-mito & non-ribo)
+    T_i <- R_i + O_i  # Total non-mito counts (everything that must be reduced)
     
-    r_i <- (1 - exp_decay) / exp_decay  # Exponential decay model
+    # Monte Carlo sampling to estimate r
+    r_samples <- runif(n_samples, 0.01, 0.7)  # Generate random r values in [0,1]
+
     
-    reduction_levels[i] <- r_i  # Store the reduction level for this cell
-  }
+    # Compute A, B, and the absolute error for each sample
+    A_values <- (r_samples * R_i) / (M_i + r_samples * T_i)
+    B_values <- M_i / (M_i + r_samples * T_i)
+    exp_decay_values <- exp(-lambda * A_values)
+    errors <- abs(B_values - exp_decay_values)
+    
+    # Select the best r (minimizing the error)
+    best_r <- r_samples[which.min(errors)]
+    
+    # Apply reduction to non-mito genes (ribo and other genes) in this cell.
+    nonMitoGenes <- c(ribo_idx, other_idx)
+    new_matrix[nonMitoGenes, cell] <- round(best_r * count_matrix[nonMitoGenes, cell])
   
-  # Prepare matrix form for reduction
-  non_mito_genes <- c(ribo_idx, other_idx)
-  
-  
-  # Create a matrix with the damage levels repeated for each gene and each cell
-  perturb_factors_matrix <- matrix(rep(reduction_levels, each = length(non_mito_genes)),
-                                   nrow = length(non_mito_genes),
-                                   ncol = length(damaged_cell_selections),
-                                   byrow = FALSE)
-  
-  # Apply reduction to the new matrix
-  new_matrix[non_mito_genes, damaged_cell_selections] <- round(perturb_factors_matrix * count_matrix[non_mito_genes, damaged_cell_selections])
+    }
   
   # QC statistics for all cells
   qcSummary <- data.frame(
@@ -83,6 +110,7 @@ simulate_damage <- function(count_matrix,
   return(list(new_matrix = new_matrix, qcSummary = qcSummary))
   
 }
+
 
 
 # Testing ----
